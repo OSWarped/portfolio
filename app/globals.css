@@ -1,0 +1,30 @@
+/* ----------  brand palette  ---------- */
+@import "tailwindcss";
+
+:root {
+  --navy:           #000046;   /* slightly deeper navy */
+  --navy-raise:     #0b0b5c;   /* used for lifted cards/sections */
+  --cardinal:       #C41E3A;
+  --cardinal-hover: #9A1429;
+
+  --background: var(--navy);
+  --foreground: #FFFFFF;
+}
+/* optional darker tweaks */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-tint: #12123a;
+  }
+}
+
+/* convenient utility aliases  */
+@layer utilities {
+  /* bg + text helpers */
+  .bg-navy         { background-color: var(--navy); }
+  .bg-navy-raise   { background-color: var(--navy-raise); }
+  .bg-cardinal     { background-color: var(--cardinal); }
+  .hover\:bg-cardinal-hover:hover { background-color: var(--cardinal-hover); }
+
+  .text-cardinal   { color: var(--cardinal); }
+  .hover\:text-cardinal:hover { color: var(--cardinal); }
+}
