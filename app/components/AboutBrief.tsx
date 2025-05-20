@@ -18,7 +18,7 @@ export default function AboutBrief() {
 
       {/* Grid of Impact Highlights */}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {highlights.map(([what, impact], idx) => (
+        {highlights.map(([what, impact]) => (
           <div
             key={what}
             className="rounded-xl border-l-4 border-[var(--cardinal)] bg-white p-6 shadow-md transition hover:shadow-lg hover:scale-[1.015]"
