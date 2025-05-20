@@ -11,9 +11,10 @@ export default function Header() {
         </Link>
 
         <ul className="flex gap-6 text-sm font-medium">
-          <li><Link href="#projects" className="hover:text-cardinal">Projects</Link></li>
-          <li><Link href="#contact"  className="hover:text-cardinal">Contact</Link></li>
-          <li><DarkModeToggle /></li>
+          <li><Link href="/projects" className="hover:text-cardinal">Projects</Link></li>
+          <li><Link href="/skills" className="hover:text-cardinal">Utilities</Link></li>
+          <li><Link href="/contact"  className="hover:text-cardinal">Contact</Link></li>
+          {/* <li><DarkModeToggle /></li> */}
         </ul>
       </nav>
       {/* thin Cardinal accent bar under header */}

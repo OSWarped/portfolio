@@ -2,20 +2,21 @@
 @import "tailwindcss";
 
 :root {
-  --navy:           #000046;   /* slightly deeper navy */
-  --navy-raise:     #0b0b5c;   /* used for lifted cards/sections */
+  --navy:           #000046;
+  --navy-raise:     #0b0b5c;
   --cardinal:       #C41E3A;
   --cardinal-hover: #9A1429;
 
-  --background: var(--navy);
-  --foreground: #FFFFFF;
+  --background: #ffffff;    /* body background */
+  --foreground: #000000;    /* default text color */
 }
+
 /* optional darker tweaks */
-@media (prefers-color-scheme: dark) {
+/* @media (prefers-color-scheme: dark) {
   :root {
     --surface-tint: #12123a;
   }
-}
+} */
 
 /* convenient utility aliases  */
 @layer utilities {
