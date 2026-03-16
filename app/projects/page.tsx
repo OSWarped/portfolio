@@ -53,6 +53,7 @@ export default function ProjectsPage() {
         description:
           'In order to make our annual haunted trail for Halloween more immersive, I placed several RaspberryPi\'s paired to bluetooth speakers running a custom python app with a flask server to play programmed or manually selected sounds controlled from an iPad',
         technologies: ['Python', 'Flask', 'Bluetooth', 'LAN/WiFi'],
+        github: 'https://github.com/OSWarped/haunt-client',
       },
     ];
   

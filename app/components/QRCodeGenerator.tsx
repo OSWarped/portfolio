@@ -127,7 +127,7 @@ END:VEVENT`;
 
       <button
         onClick={handleGenerate}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        className="rounded-xl bg-[var(--navy)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--navy-raise)]"
       >
         Generate QR Code
       </button>
@@ -139,7 +139,7 @@ END:VEVENT`;
     </div>
     <button
       onClick={handleDownload}
-      className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+      className="rounded-xl bg-[var(--navy)] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[var(--navy-raise)]"
     >
       Download as PNG
     </button>

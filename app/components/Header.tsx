@@ -11,9 +11,9 @@ export default function Header() {
         </Link>
 
         <ul className="flex gap-6 text-sm font-medium">
-          <li><Link href="/projects" className="hover:text-cardinal">Projects</Link></li>
-          <li><Link href="/skills" className="hover:text-cardinal">Utilities</Link></li>
-          <li><Link href="/contact"  className="hover:text-cardinal">Contact</Link></li>
+          <li><Link href="/projects" className="text-white hover:text-cardinal">Projects</Link></li>
+          <li><Link href="/utilities" className="text-white hover:text-cardinal">Utilities</Link></li>
+          <li><Link href="/contact"  className="text-white hover:text-cardinal">Contact</Link></li>
           {/* <li><DarkModeToggle /></li> */}
         </ul>
       </nav>
