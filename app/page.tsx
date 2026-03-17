@@ -42,7 +42,7 @@ export default function Home() {
             </a>
 
             <a
-              href="/skills"
+              href="/utilities"
               className="inline-block rounded-lg border border-[var(--navy)]/20 bg-white px-6 py-3 font-semibold text-[var(--navy)] hover:border-[var(--cardinal)] hover:text-[var(--cardinal)]"
             >
               Explore utilities
