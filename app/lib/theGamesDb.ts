@@ -13,11 +13,12 @@ type TgdbGame = {
   game_title: string;
   overview?: string | null;
   release_date?: string | null;
-  rating?: number | null;
+  rating?: number | string | null;
   youtube?: string | null;
   genres?: number[];
   publishers?: number[];
   developers?: number[];
+  platform?: number | number[] | null;
 };
 
 type TgdbImageEntry = {
@@ -77,6 +78,7 @@ export type ExternalPlatformMeta = {
   overview: string | null;
   developer: string | null;
   manufacturer: string | null;
+  iconUrl: string | null;
 };
 
 export type ExternalGameMeta = {
@@ -88,6 +90,13 @@ export type ExternalGameMeta = {
   youtube: string | null;
   coverUrl: string | null;
   screenshotUrls: string[];
+  platformIds: number[];
+};
+
+export type CollectionGameEnrichment = {
+  platform: ExternalPlatformMeta | null;
+  game: ExternalGameMeta | null;
+  screenshots: string[];
 };
 
 const BASE_URL = 'https://api.thegamesdb.net';
@@ -100,8 +109,12 @@ export function hasTheGamesDbKey(): boolean {
   return Boolean(getApiKey());
 }
 
-async function tgdb<T>(pathname: string, params: Record<string, string | number | undefined>) {
+async function tgdb<T>(
+  pathname: string,
+  params: Record<string, string | number | undefined>
+): Promise<T | null> {
   const apiKey = getApiKey();
+  console.log(`TheGamesDB API key ${apiKey ? 'found' : 'not found'} for request to ${pathname}: Key is ${apiKey}`);
 
   if (!apiKey) {
     return null;
@@ -116,21 +129,111 @@ async function tgdb<T>(pathname: string, params: Record<string, string | number 
     }
   }
 
-  const response = await fetch(`${BASE_URL}${pathname}?${search.toString()}`, {
-    next: { revalidate: 60 * 60 * 24 },
-  });
+  const url = `${BASE_URL}${pathname}?${search.toString()}`;
 
-  if (!response.ok) {
-    throw new Error(`TheGamesDB request failed with ${response.status}`);
+  try {
+    const response = await fetch(url, {
+      next: { revalidate: 60 * 60 * 24 },
+    });
+
+    if (!response.ok) {
+      if (response.status >= 500) {
+        console.warn(`TheGamesDB temporary failure: ${response.status} for ${pathname}`);
+        return null;
+      }
+
+      throw new Error(`TheGamesDB request failed with ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  } catch (error) {
+    console.warn(`TheGamesDB fetch failed for ${pathname}:`, error);
+    return null;
   }
-
-  return (await response.json()) as T;
 }
 
 function firstRecord<T>(record: Record<string, T> | undefined): T | null {
   if (!record) return null;
   const values = Object.values(record);
   return values[0] ?? null;
+}
+
+function normalizeRating(value: number | string | null | undefined): number | null {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : null;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizePlatformIds(platform: number | number[] | null | undefined): number[] {
+  if (Array.isArray(platform)) return platform.filter((id) => Number.isFinite(id));
+  if (typeof platform === 'number' && Number.isFinite(platform)) return [platform];
+  return [];
+}
+
+function normalizeGame(
+  game: TgdbGame,
+  boxartData?: TgdbGamesResponse['include']
+): ExternalGameMeta {
+  const boxartBase = boxartData?.boxart?.base_url?.medium ?? null;
+  const boxartSet = boxartData?.boxart?.data?.[String(game.id)] ?? [];
+  const frontCover = boxartSet.find(
+    (image) => image.type === 'boxart' && image.side === 'front'
+  );
+
+  return {
+    id: game.id,
+    title: game.game_title,
+    overview: game.overview ?? null,
+    releaseDate: game.release_date ?? null,
+    rating: normalizeRating(game.rating),
+    youtube: game.youtube ?? null,
+    coverUrl: boxartBase && frontCover ? `${boxartBase}${frontCover.filename}` : null,
+    screenshotUrls: [],
+    platformIds: normalizePlatformIds(game.platform),
+  };
+}
+
+function normalizeLookupTitle(title: string): string {
+  return title
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/\s*-\s*[^-]+edition$/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function scoreGameMatch(
+  title: string,
+  candidate: TgdbGame,
+  expectedPlatformId?: number | null
+): number {
+  const target = title.trim().toLowerCase();
+  const candidateTitle = candidate.game_title.trim().toLowerCase();
+
+  let score = 0;
+
+  if (candidateTitle === target) {
+    score += 100;
+  } else if (candidateTitle.startsWith(target)) {
+    score += 80;
+  } else if (candidateTitle.includes(target)) {
+    score += 60;
+  } else {
+    score += 10;
+  }
+
+  const candidatePlatformIds = normalizePlatformIds(candidate.platform);
+
+  if (
+    expectedPlatformId &&
+    candidatePlatformIds.includes(expectedPlatformId)
+  ) {
+    score += 1000;
+  }
+
+  return score;
 }
 
 export async function searchPlatformByName(
@@ -157,13 +260,15 @@ export async function searchPlatformByName(
     overview: platform.overview ?? null,
     developer: platform.developer ?? null,
     manufacturer: platform.manufacturer ?? null,
+    iconUrl: platform.icon ?? null,
   };
 }
 
-export async function searchGameByName(
+export async function searchGamesByName(
   gameTitle: string,
-  platformName?: string | null
-): Promise<ExternalGameMeta | null> {
+  platformName?: string | null,
+  expectedPlatformId?: number | null
+): Promise<ExternalGameMeta[]> {
   const response = await tgdb<TgdbGamesResponse>('/v1.1/Games/ByGameName', {
     name: gameTitle,
     fields: 'overview,genres,publishers,rating,youtube',
@@ -171,32 +276,32 @@ export async function searchGameByName(
     'filter[platform]': platformName ?? undefined,
   });
 
-  if (!response?.data?.games) {
-    return null;
+  const games = response?.data?.games ? Object.values(response.data.games) : [];
+
+  if (!games.length) {
+    return [];
   }
 
-  const game = firstRecord(response.data.games);
+  return games
+    .sort(
+      (a, b) =>
+        scoreGameMatch(gameTitle, b, expectedPlatformId) -
+        scoreGameMatch(gameTitle, a, expectedPlatformId)
+    )
+    .map((game) => normalizeGame(game, response?.include));
+}
 
-  if (!game) {
-    return null;
+export async function searchBestGameByName(
+  gameTitle: string,
+  platformName?: string | null
+): Promise<ExternalGameMeta | null> {
+  const filteredResults = await searchGamesByName(gameTitle, platformName);
+  if (filteredResults.length > 0) {
+    return filteredResults[0];
   }
 
-  const boxartBase = response.include?.boxart?.base_url?.medium ?? null;
-  const boxartSet = response.include?.boxart?.data?.[String(game.id)] ?? [];
-  const frontCover = boxartSet.find(
-    (image) => image.type === 'boxart' && image.side === 'front'
-  );
-
-  return {
-    id: game.id,
-    title: game.game_title,
-    overview: game.overview ?? null,
-    releaseDate: game.release_date ?? null,
-    rating: typeof game.rating === 'number' ? game.rating : null,
-    youtube: game.youtube ?? null,
-    coverUrl: boxartBase && frontCover ? `${boxartBase}${frontCover.filename}` : null,
-    screenshotUrls: [],
-  };
+  const unfilteredResults = await searchGamesByName(gameTitle);
+  return unfilteredResults[0] ?? null;
 }
 
 export async function getGameImages(gameId: number): Promise<string[]> {
@@ -216,3 +321,47 @@ export async function getGameImages(gameId: number): Promise<string[]> {
     .map((image) => `${baseUrl}${image.filename}`)
     .slice(0, 6);
 }
+
+export async function enrichCollectionGame(
+  collectionGame: { title: string; platform: string | null }
+): Promise<CollectionGameEnrichment> {
+  try {
+    const platformMeta = collectionGame.platform
+      ? await searchPlatformByName(collectionGame.platform)
+      : null;
+
+    const normalizedTitle = normalizeLookupTitle(collectionGame.title);
+
+    const gameMeta = await searchBestGameByName(
+      normalizedTitle,
+      platformMeta?.name ?? collectionGame.platform ?? undefined
+    );
+
+    const screenshots = gameMeta ? await getGameImages(gameMeta.id) : [];
+
+    return {
+      platform: platformMeta,
+      game: gameMeta
+        ? {
+            ...gameMeta,
+            screenshotUrls: screenshots,
+          }
+        : null,
+      screenshots,
+    };
+  } catch (error) {
+    console.warn(
+      `Failed to enrich game "${collectionGame.title}" on platform "${collectionGame.platform ?? 'unknown'}":`,
+      error
+    );
+
+    return {
+      platform: null,
+      game: null,
+      screenshots: [],
+    };
+  }
+}
+
+
+
