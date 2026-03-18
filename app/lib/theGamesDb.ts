@@ -114,7 +114,6 @@ async function tgdb<T>(
   params: Record<string, string | number | undefined>
 ): Promise<T | null> {
   const apiKey = getApiKey();
-  console.log(`TheGamesDB API key ${apiKey ? 'found' : 'not found'} for request to ${pathname}: Key is ${apiKey}`);
 
   if (!apiKey) {
     return null;
@@ -137,12 +136,19 @@ async function tgdb<T>(
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        console.warn(`TheGamesDB rate limited request for ${pathname}`);
+        return null;
+      }
+
       if (response.status >= 500) {
         console.warn(`TheGamesDB temporary failure: ${response.status} for ${pathname}`);
         return null;
       }
 
-      throw new Error(`TheGamesDB request failed with ${response.status}`);
+      throw new Error(
+        `TheGamesDB request failed with ${response.status}: ${response.statusText} for ${pathname}`
+      );
     }
 
     return (await response.json()) as T;

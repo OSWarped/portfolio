@@ -38,9 +38,12 @@ export default async function GameCollectionPage() {
           </h1>
 
           <p className="max-w-3xl text-lg leading-8 text-zinc-700">
-            A personal collection explorer built from my exported catalog data.
-            This feature is less about showing a list and more about turning raw data
-            into a drillable interface with detail pages for platforms and games.
+            This page is a drillable view of my videogame collection, powered by an exported .csv file dumped from my mobile
+            device&apos;s cataloging software. The data has been transcribed into JSON format and let&apos;s the user explore 
+            their collection by platform, see recently added games, and more. This is more of an exercise in reporting data 
+            easliy in Next.js rather than reporting tools like PowerBi. The raw data is static, but gets enriched with metadata, 
+            such as boxart, screenshots, and descriptions from TheGamesDb API I&apos;ve connected. Any delays you get are 
+            from the enrichment process, which is done on a per-game basis as you explore the collection.
           </p>
         </section>
 
@@ -64,22 +67,7 @@ export default async function GameCollectionPage() {
                 </Link>
               ))}
             </div>
-          </div>
-
-          <div className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
-            <h2 className="text-2xl font-semibold text-[var(--navy)]">What this page is</h2>
-
-            <div className="mt-6 space-y-4 text-sm leading-7 text-zinc-600">
-              <p>Local collection data comes from my CSV export.</p>
-              <p>
-                Platform and game detail pages are structured to support external metadata
-                enrichment once the API key is configured.
-              </p>
-              <p>
-                The goal is a quiet, drillable utility rather than a flashy showcase card.
-              </p>
-            </div>
-          </div>
+          </div>          
         </section>
 
         <GameCollectionBrowser

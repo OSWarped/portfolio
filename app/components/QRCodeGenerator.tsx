@@ -233,7 +233,7 @@ function Input({
 }) {
   return (
     <div className="flex flex-col gap-1 mb-2">
-      <label className="font-medium">{label}</label>
+      <label className="font-medium text-black">{label}</label>
       <input
         className="p-2 border rounded text-black"
         type="text"
