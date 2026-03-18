@@ -1,57 +1,91 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import Papa from 'papaparse';
 
-type RawCollectionRow = {
-    Title?: string;
-    Platform?: string;
-    Category?: string;
-    Ownership?: string;
-    Publisher?: string;
-    Developer?: string;
-    Genre?: string;
-    CreatedAt?: string;
-    metacritic?: string;
-    ItemCondition?: string;
-    BoxCondition?: string;
-    ManualCondition?: string;
+export type CollectionGameRecord = {
+  id: string;
+  slug: string;
+
+  title: string;
+  platform: string | null;
+  category: string | null;
+  userRecordType: string | null;
+  country: string | null;
+  releaseType: string | null;
+  publisher: string | null;
+  developer: string | null;
+  genre: string | null;
+  createdAt: string | null;
+  ownership: string | null;
+  priceLoose: string | null;
+  priceCib: string | null;
+  priceNew: string | null;
+  yourPrice: string | null;
+  pricePaid: string | null;
+  itemCondition: string | null;
+  boxCondition: string | null;
+  manualCondition: string | null;
+  notes: string | null;
+  tags: string[];
+  metacritic: string | null;
+
+  tgdb: {
+    gameId: number | null;
+    platformId: number | null;
+    title: string | null;
+    coverUrl: string | null;
+    releaseDate: string | null;
+    overview: string | null;
+    rating: number | null;
+    youtube: string | null;
+    screenshots: string[];
+    matchedAt: string | null;
+    matchSource: 'auto' | 'manual' | null;
+  };
+
+  platformMeta: {
+    name: string | null;
+    overview: string | null;
+    developer: string | null;
+    manufacturer: string | null;
+    iconUrl: string | null;
+  };
 };
 
-export type OwnershipType = 'Owned' | 'Wishlist' | 'Other';
-
 export type RawOwnershipType =
-    | 'Loose'
-    | 'CIB'
-    | 'CIB+'
-    | 'Loose+'
-    | 'Boxed'
-    | 'New'
-    | 'Digital'
-    | 'Other';
+  | 'Loose'
+  | 'CIB'
+  | 'CIB+'
+  | 'Loose+'
+  | 'Boxed'
+  | 'New'
+  | 'Digital'
+  | 'Other';
 
 export type CollectionState =
-    | 'Loose'
-    | 'Complete in Box'
-    | 'Complete in Box with inserts'
-    | 'Loose with manual'
-    | 'Boxed no manual'
-    | 'New'
-    | 'Digital'
-    | 'Other';
+  | 'Loose'
+  | 'Complete in Box'
+  | 'Complete in Box with inserts'
+  | 'Loose with manual'
+  | 'Boxed no manual'
+  | 'New'
+  | 'Digital'
+  | 'Other';
 
 export type CollectionGame = {
-    slug: string;
-    title: string;
-    platform: string | null;
-    platformSlug: string | null;
-    category: string | null;
-    ownership: RawOwnershipType;
-    publisher: string | null;
-    developer: string | null;
-    genre: string | null;
-    createdAt: string | null;
-    metacritic: number | null;
-    state: CollectionState;
+  slug: string;
+  title: string;
+  platform: string | null;
+  platformSlug: string | null;
+  category: string | null;
+  ownership: RawOwnershipType;
+  publisher: string | null;
+  developer: string | null;
+  genre: string | null;
+  createdAt: string | null;
+  metacritic: number | null;
+  state: CollectionState;
+  tgdbGameId: number | null;
+  tgdbCoverUrl: string | null;
 };
 
 export type PlatformSummary = {
@@ -61,272 +95,221 @@ export type PlatformSummary = {
 };
 
 export type PlatformDetail = {
-    platform: PlatformSummary;
-    games: CollectionGame[];
-    topGenres: Array<{ name: string; count: number }>;
-    topPublishers: Array<{ name: string; count: number }>;
+  platform: PlatformSummary;
+  games: CollectionGame[];
+  topGenres: Array<{ name: string; count: number }>;
+  topPublishers: Array<{ name: string; count: number }>;
 };
 
 export type CollectionOverview = {
-    totalItems: number;
-    platformCount: number;
-    topPlatforms: PlatformSummary[];
-    recentGames: CollectionGame[];
-    allGames: CollectionGame[];
+  totalItems: number;
+  platformCount: number;
+  topPlatforms: PlatformSummary[];
+  recentGames: CollectionGame[];
+  allGames: CollectionGame[];
 };
 
-const CSV_PATH = path.join(process.cwd(), 'data', 'ge_collection.csv');
+const JSON_PATH = path.join(process.cwd(), 'data', 'gameCollection.json');
 
-function normalizeText(value: string | undefined): string | null {
-    const trimmed = value?.trim();
-
-    if (!trimmed || trimmed === 'Missing Field') {
-        return null;
-    }
-
-    return trimmed;
-}
-
-function normalizeOwnership(value: string | undefined): RawOwnershipType {
-    const normalized = value?.trim();
-
-    switch (normalized) {
-        case 'Loose':
-        case 'CIB':
-        case 'CIB+':
-        case 'Loose+':
-        case 'Boxed':
-        case 'New':
-        case 'Digital':
-            return normalized;
-        default:
-            return 'Other';
-    }
-}
-
-function normalizeDate(value: string | undefined): string | null {
-    const trimmed = value?.trim();
-
-    if (!trimmed) {
-        return null;
-    }
-
-    const parsed = new Date(trimmed);
-
-    if (Number.isNaN(parsed.getTime())) {
-        return null;
-    }
-
-    return parsed.toISOString();
-}
-
-function normalizeMetacritic(value: string | undefined): number | null {
-    const trimmed = value?.trim();
-
-    if (!trimmed) {
-        return null;
-    }
-
-    const parsed = Number(trimmed);
-
-    if (!Number.isFinite(parsed) || parsed <= 0) {
-        return null;
-    }
-
-    return parsed;
-}
 function slugify(value: string): string {
-    return value
-        .toLowerCase()
-        .trim()
-        .replace(/&/g, ' and ')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .replace(/-{2,}/g, '-');
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-{2,}/g, '-');
 }
 
-function buildStableGameSlugs(
-    rows: Array<Omit<CollectionGame, 'slug'>>
-): CollectionGame[] {
-    const seen = new Map<string, number>();
+const OWNERSHIP_VALUES = new Set<RawOwnershipType>([
+  'Loose',
+  'CIB',
+  'CIB+',
+  'Loose+',
+  'Boxed',
+  'New',
+  'Digital',
+  'Other',
+]);
 
-    return rows.map((row) => {
-        const base = `${slugify(row.title)}--${slugify(row.platform ?? 'unknown')}`;
-        const count = (seen.get(base) ?? 0) + 1;
-        seen.set(base, count);
+function normalizeOwnership(value: string | null | undefined): RawOwnershipType {
+  const trimmed = value?.trim();
 
-        return {
-            ...row,
-            slug: count === 1 ? base : `${base}-${count}`,
-        };
-    });
+  if (trimmed && OWNERSHIP_VALUES.has(trimmed as RawOwnershipType) && trimmed !== 'Other') {
+    return trimmed as RawOwnershipType;
+  }
+
+  return 'Other';
 }
 
 function mapOwnershipToState(ownership: RawOwnershipType): CollectionState {
-    switch (ownership) {
-        case 'Loose':
-            return 'Loose';
-        case 'CIB':
-            return 'Complete in Box';
-        case 'CIB+':
-            return 'Complete in Box with inserts';
-        case 'Loose+':
-            return 'Loose with manual';
-        case 'Boxed':
-            return 'Boxed no manual';
-        case 'New':
-            return 'New';
-        case 'Digital':
-            return 'Digital';
-        default:
-            return 'Other';
-    }
+  switch (ownership) {
+    case 'Loose':
+      return 'Loose';
+    case 'CIB':
+      return 'Complete in Box';
+    case 'CIB+':
+      return 'Complete in Box with inserts';
+    case 'Loose+':
+      return 'Loose with manual';
+    case 'Boxed':
+      return 'Boxed no manual';
+    case 'New':
+      return 'New';
+    case 'Digital':
+      return 'Digital';
+    default:
+      return 'Other';
+  }
 }
 
-async function readParsedRows(): Promise<CollectionGame[]> {
-    const csv = await readFile(CSV_PATH, 'utf8');
+function normalizeMetacritic(value: string | null | undefined): number | null {
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
 
-    const parsed = Papa.parse<RawCollectionRow>(csv, {
-        header: true,
-        skipEmptyLines: true,
-    });
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
 
-    if (parsed.errors.length > 0) {
-        throw new Error(parsed.errors[0]?.message ?? 'Failed to parse collection CSV.');
-    }
+function mapRecordToGame(record: CollectionGameRecord): CollectionGame {
+  const ownership = normalizeOwnership(record.ownership);
 
-    const mapped = parsed.data
-        .map((row) => {
-            const title = normalizeText(row.Title);
+  return {
+    slug: record.slug,
+    title: record.title,
+    platform: record.platform,
+    platformSlug: record.platform ? slugify(record.platform) : null,
+    category: record.category,
+    ownership,
+    publisher: record.publisher,
+    developer: record.developer,
+    genre: record.genre,
+    createdAt: record.createdAt,
+    metacritic: normalizeMetacritic(record.metacritic),
+    state: mapOwnershipToState(ownership),
+    tgdbGameId: record.tgdb.gameId,
+    tgdbCoverUrl: record.tgdb.coverUrl,
+  };
+}
 
-            if (!title) {
-                return null;
-            }
+async function readCollectionRecords(): Promise<CollectionGameRecord[]> {
+  const json = await readFile(JSON_PATH, 'utf8');
+  const parsed = JSON.parse(json) as CollectionGameRecord[];
 
-            const platform = normalizeText(row.Platform);
-            const ownership = normalizeOwnership(row.Ownership);
+  return parsed.filter((record) => Boolean(record?.title && record?.slug));
+}
 
-            return {
-                title,
-                platform,
-                platformSlug: platform ? slugify(platform) : null,
-                category: normalizeText(row.Category),
-                ownership,
-                publisher: normalizeText(row.Publisher),
-                developer: normalizeText(row.Developer),
-                genre: normalizeText(row.Genre),
-                createdAt: normalizeDate(row.CreatedAt),
-                metacritic: normalizeMetacritic(row.metacritic),
-                state: mapOwnershipToState(ownership),
-            } satisfies Omit<CollectionGame, 'slug'>;
-        })
-        .filter((row): row is Omit<CollectionGame, 'slug'> => row !== null);
-
-    return buildStableGameSlugs(mapped);
+export async function getAllCollectionRecords(): Promise<CollectionGameRecord[]> {
+  return readCollectionRecords();
 }
 
 export async function getAllCollectionGames(): Promise<CollectionGame[]> {
-    return readParsedRows();
+  const records = await readCollectionRecords();
+  return records.map(mapRecordToGame);
 }
 
 export async function getCollectionOverview(): Promise<CollectionOverview> {
-    const collection = await getAllCollectionGames();
+  const collection = await getAllCollectionGames();
+  const gamesOnly = collection.filter((game) => game.category === 'Games');
 
-    const gamesOnly = collection.filter((game) => game.category === 'Games');
+  const platformMap = new Map<string, PlatformSummary>();
 
-    const platformMap = new Map<string, PlatformSummary>();
+  for (const game of gamesOnly) {
+    if (!game.platform || !game.platformSlug) continue;
 
-    for (const game of gamesOnly) {
-        if (!game.platform || !game.platformSlug) continue;
-
-        const current = platformMap.get(game.platform) ?? {
-            name: game.platform,
-            slug: game.platformSlug,
-            total: 0,
-            owned: 0,
-            wishlist: 0,
-        };
-
-        current.total += 1;       
-
-        platformMap.set(game.platform, current);
-    }
-
-    const topPlatforms = [...platformMap.values()]
-        .sort((a, b) => b.total - a.total)
-        .slice(0, 12);
-
-    const recentGames = [...gamesOnly]
-        .filter((game) => game.createdAt !== null)
-        .sort((a, b) => {
-            const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-            const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-            return bTime - aTime;
-        })
-        .slice(0, 16);
-
-    const allGames = [...gamesOnly].sort((a, b) => a.title.localeCompare(b.title));
-
-    return {
-        totalItems: gamesOnly.length,
-        platformCount: platformMap.size,
-        topPlatforms,
-        recentGames,
-        allGames,
+    const current = platformMap.get(game.platform) ?? {
+      name: game.platform,
+      slug: game.platformSlug,
+      total: 0,
     };
+
+    current.total += 1;
+    platformMap.set(game.platform, current);
+  }
+
+  const topPlatforms = [...platformMap.values()]
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 12);
+
+  const recentGames = [...gamesOnly]
+    .filter((game) => game.createdAt !== null)
+    .sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    })
+    .slice(0, 16);
+
+  const allGames = [...gamesOnly].sort((a, b) => a.title.localeCompare(b.title));
+
+  return {
+    totalItems: gamesOnly.length,
+    platformCount: platformMap.size,
+    topPlatforms,
+    recentGames,
+    allGames,
+  };
 }
 
 export async function getAllPlatforms(): Promise<PlatformSummary[]> {
-    const overview = await getCollectionOverview();
-    return overview.topPlatforms;
+  const overview = await getCollectionOverview();
+  return overview.topPlatforms;
 }
 
 export async function getPlatformDetailBySlug(
-    platformSlug: string
+  platformSlug: string
 ): Promise<PlatformDetail | null> {
-    const games = await getAllCollectionGames();
+  const games = await getAllCollectionGames();
 
-    const platformGames = games
-        .filter((game) => game.platformSlug === platformSlug)
-        .sort((a, b) => a.title.localeCompare(b.title));
+  const platformGames = games
+    .filter((game) => game.platformSlug === platformSlug)
+    .sort((a, b) => a.title.localeCompare(b.title));
 
-    if (platformGames.length === 0) {
-        return null;
+  if (platformGames.length === 0) {
+    return null;
+  }
+
+  const first = platformGames[0];
+  const genreMap = new Map<string, number>();
+  const publisherMap = new Map<string, number>();
+
+  for (const game of platformGames) {
+    if (game.genre) {
+      genreMap.set(game.genre, (genreMap.get(game.genre) ?? 0) + 1);
     }
 
-    const first = platformGames[0];
-    const genreMap = new Map<string, number>();
-    const publisherMap = new Map<string, number>();
-
-    for (const game of platformGames) {
-        if (game.genre) {
-            genreMap.set(game.genre, (genreMap.get(game.genre) ?? 0) + 1);
-        }
-
-        if (game.publisher) {
-            publisherMap.set(game.publisher, (publisherMap.get(game.publisher) ?? 0) + 1);
-        }
+    if (game.publisher) {
+      publisherMap.set(game.publisher, (publisherMap.get(game.publisher) ?? 0) + 1);
     }
+  }
 
-    return {
-        platform: {
-            name: first.platform ?? 'Unknown Platform',
-            slug: first.platformSlug ?? platformSlug,
-            total: platformGames.length,            
-        },
-        games: platformGames,
-        topGenres: [...genreMap.entries()]
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 8),
-        topPublishers: [...publisherMap.entries()]
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 8),
-    };
+  return {
+    platform: {
+      name: first.platform ?? 'Unknown Platform',
+      slug: first.platformSlug ?? platformSlug,
+      total: platformGames.length,
+    },
+    games: platformGames,
+    topGenres: [...genreMap.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8),
+    topPublishers: [...publisherMap.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 8),
+  };
 }
 
 export async function getGameBySlug(slug: string): Promise<CollectionGame | null> {
-    const games = await getAllCollectionGames();
-    return games.find((game) => game.slug === slug) ?? null;
+  const games = await getAllCollectionGames();
+  return games.find((game) => game.slug === slug) ?? null;
 }
+
+export async function getCollectionRecordBySlug(
+  slug: string
+): Promise<CollectionGameRecord | null> {
+  const records = await getAllCollectionRecords();
+  return records.find((record) => record.slug === slug) ?? null;
+}
+
