@@ -5,7 +5,7 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        disallow: ['/game-collection/game/'],
+        disallow: ['/game-collection/game/', '/api/'],
       },
     ],
     sitemap: 'https://blakemilam.com/sitemap.xml',

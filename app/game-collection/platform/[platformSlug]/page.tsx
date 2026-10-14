@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getPlatformDetailBySlug } from '../../../lib/gameCollection';
-import { hasTheGamesDbKey, searchPlatformByName } from '../../../lib/theGamesDb';
 
 type PageProps = {
   params: Promise<{
@@ -16,10 +15,6 @@ export default async function PlatformDetailPage({ params }: PageProps) {
   if (!detail) {
     notFound();
   }
-
-  const externalMeta = hasTheGamesDbKey()
-    ? await searchPlatformByName(detail.platform.name)
-    : null;
 
   return (
     <main className="min-h-screen bg-white px-6 py-20 text-black">
@@ -47,8 +42,7 @@ export default async function PlatformDetailPage({ params }: PageProps) {
           </div>
 
           <p className="max-w-3xl leading-8 text-zinc-700">
-            {externalMeta?.overview ??
-              'External platform metadata will appear here after the TheGamesDB API key is configured.'}
+            Platform overview is not available in the saved collection data.
           </p>
         </section>
 
