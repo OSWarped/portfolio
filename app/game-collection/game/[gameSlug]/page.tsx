@@ -5,11 +5,6 @@ import {
   getCollectionRecordBySlug,
   getGameBySlug,
 } from '../../../lib/gameCollection';
-import {
-  enrichCollectionGame,
-  hasTheGamesDbKey,
-} from '../../../lib/theGamesDb';
-import MatchPicker from './MatchPicker';
 
 type PageProps = {
   params: Promise<{
@@ -29,35 +24,13 @@ export default async function GameDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const hasSavedTgdb =
-    Boolean(record.tgdb.coverUrl) ||
-    Boolean(record.tgdb.overview) ||
-    Boolean(record.tgdb.releaseDate) ||
-    record.tgdb.screenshots.length > 0;
-
-  const liveEnrichment =
-    !hasSavedTgdb && hasTheGamesDbKey()
-      ? await enrichCollectionGame({
-          title: game.title,
-          platform: game.platform,
-        })
-      : null;
-
-  const coverUrl = record.tgdb.coverUrl ?? liveEnrichment?.game?.coverUrl ?? null;
-  const overview = record.tgdb.overview ?? liveEnrichment?.game?.overview ?? null;
-  const releaseDate =
-    record.tgdb.releaseDate ?? liveEnrichment?.game?.releaseDate ?? null;
-  const rating = record.tgdb.rating ?? liveEnrichment?.game?.rating ?? null;
-  const screenshots =
-    record.tgdb.screenshots.length > 0
-      ? record.tgdb.screenshots
-      : (liveEnrichment?.game?.screenshotUrls ?? []);
-  const platformOverview =
-    record.platformMeta.overview ?? liveEnrichment?.platform?.overview ?? null;
-  const platformManufacturer =
-    record.platformMeta.manufacturer ??
-    liveEnrichment?.platform?.manufacturer ??
-    null;
+  const coverUrl = record.tgdb.coverUrl;
+  const overview = record.tgdb.overview;
+  const releaseDate = record.tgdb.releaseDate;
+  const rating = record.tgdb.rating;
+  const screenshots = record.tgdb.screenshots;
+  const platformOverview = record.platformMeta.overview;
+  const platformManufacturer = record.platformMeta.manufacturer;
 
   return (
     <main className="min-h-screen bg-white px-6 py-20 text-black">
@@ -206,16 +179,10 @@ export default async function GameDetailPage({ params }: PageProps) {
           </div>
         </section>
 
-        <MatchPicker
-  slug={game.slug}
-  title={game.title}
-  platform={game.platform}
-  hasSavedMatch={
-    Boolean(record.tgdb.gameId) ||
-    Boolean(record.tgdb.coverUrl) ||
-    record.tgdb.screenshots.length > 0
-  }
-/>
+        <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+          Live TheGamesDB matching is disabled to protect the API quota. Previously saved
+          metadata remains available.
+        </div>
 
         <section className="rounded-3xl border border-zinc-200 bg-white p-6 shadow-sm">
           <h2 className="text-2xl font-semibold text-[var(--navy)]">Screenshots</h2>
